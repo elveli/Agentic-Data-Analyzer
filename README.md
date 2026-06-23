@@ -152,13 +152,11 @@ terraform init
 # Review the planned list of resources
 terraform plan \
   -var="aws_region=YOUR_AWS_REGION" \
-  -var="db_password=YOUR_SECURE_PASSWORD" \
   -var="gemini_api_key=YOUR_GEMINI_KEY"
 
 # Provision infrastructure on AWS
 terraform apply \
   -var="aws_region=YOUR_AWS_REGION" \
-  -var="db_password=YOUR_SECURE_PASSWORD" \
   -var="gemini_api_key=YOUR_GEMINI_KEY"\
   -auto-approve
 ```

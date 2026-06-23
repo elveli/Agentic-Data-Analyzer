@@ -179,7 +179,7 @@ resource "aws_iam_role_policy_attachment" "apprunner_ecr" {
 resource "aws_ecr_repository" "agent_ecr" {
   name                 = var.app_name
   image_tag_mutability = "MUTABLE"
-  force_destroy        = true
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = false

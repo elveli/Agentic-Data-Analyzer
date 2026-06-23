@@ -59,6 +59,24 @@ resource "aws_db_subnet_group" "db_group" {
   subnet_ids = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id]
 }
 
+# Generate a secure random password automatically for the database
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+# AWS Secret Manager for secure storage of Database Password
+resource "aws_secretsmanager_secret" "db_password" {
+  name                    = "\${var.app_name}-db-password"
+  recovery_window_in_days = 0 
+}
+
+resource "aws_secretsmanager_secret_version" "db_password_val" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = random_password.db_password.result
+}
+
 # AWS RDS Postgres (With pgvector capabilities loaded automatically at engine boot)
 resource "aws_db_instance" "postgres_vector" {
   identifier           = "\${var.app_name}-postgres"
@@ -68,7 +86,7 @@ resource "aws_db_instance" "postgres_vector" {
   instance_class       = "db.t4g.micro" # Ultra cost-effective development scaling (~$12/mo)
   db_name              = "agentic_workspace"
   username             = "agent_admin"
-  password             = var.db_password
+  password             = random_password.db_password.result
   db_subnet_group_name = aws_db_subnet_group.db_group.name
   skip_final_snapshot  = true
   publicly_accessible  = true
@@ -88,7 +106,7 @@ resource "aws_apprunner_service" "agent_runner" {
           NODE_ENV       = "production"
           DB_HOST        = aws_db_instance.postgres_vector.address
           DB_USER        = "agent_admin"
-          DB_PASS        = var.db_password
+          DB_PASS        = random_password.db_password.result
           DB_NAME        = "agentic_workspace"
           GEMINI_API_KEY = var.gemini_api_key
         }
@@ -106,12 +124,6 @@ variable "app_name" {
   type        = string
   default     = "agentic-data-analyzer"
   description = "Name of the agentic data processing application."
-}
-
-variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "The RDS PostgreSQL database master password with PGVECTOR support."
 }
 
 variable "gemini_api_key" {

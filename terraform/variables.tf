@@ -10,12 +10,6 @@ variable "app_name" {
   description = "Name of the agentic data processing application."
 }
 
-variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "The RDS PostgreSQL database master password with PGVECTOR support."
-}
-
 variable "gemini_api_key" {
   type        = string
   sensitive   = true

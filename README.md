@@ -163,12 +163,16 @@ terraform apply \
 ---
 
 ## 🔄 CI/CD Git Deployment
-To deploy automatically on every code push:
-1. Configure your GitHub repository.
-2. Set up GitHub Secrets:
-   - `AWS_ACCESS_KEY_ID`: Your target AWS access key ID.
-   - `AWS_SECRET_ACCESS_KEY`: Your target AWS secret access key.
-   - `AWS_DEFAULT_REGION`: Your target AWS region.
-   - `AWS_DB_PASSWORD`: A secure text password of your choosing that will be used to initialize the Postgres vector instance admin account.
-   - `GEMINI_API_KEY`: Your Gemini API credentials used server-side to power the AI data analysis engine.
-3. Push to `main` branch to trigger the action.
+The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the app, pushes the Docker image to Amazon ECR, and runs `terraform apply` automatically on every push to `main`. The database password is not a secret you provide — Terraform generates and stores it for you in AWS Secrets Manager.
+
+To enable this for your own fork/repo:
+
+1. Push this repository to your own GitHub account (if you haven't already).
+2. In your repo, go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+   - `AWS_ACCESS_KEY_ID`: Access key ID for an AWS IAM user/role with permission to manage the resources in `terraform/` (VPC, ECS, RDS, ECR, IAM, Secrets Manager).
+   - `AWS_SECRET_ACCESS_KEY`: The matching AWS secret access key.
+   - `AWS_DEFAULT_REGION`: The AWS region to deploy into (e.g. `us-east-1`).
+   - `GEMINI_API_KEY`: Your Gemini API key, stored in AWS Secrets Manager and injected into the ECS task at deploy time.
+3. Push to the `main` branch (or merge a PR into it) to trigger the workflow under the **Actions** tab.
+
+> Note: this CI/CD flow always re-runs `terraform apply` against the same state, so it's meant for a single long-lived environment rather than per-branch/per-PR deployments.

@@ -1,0 +1,5 @@
+bucket         = "agentic-data-analyzer-tfstate-<your-account-id>"
+key            = "agentic-data-analyzer/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "agentic-data-analyzer-tf-locks"
+encrypt        = true

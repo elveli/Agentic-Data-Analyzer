@@ -26,9 +26,9 @@ resource "aws_internet_gateway" "igw" {
 
 # Define two subnets in distinct availability zones (mandatory for AWS Database Subnet Group configurations)
 resource "aws_subnet" "subnet_a" {
-  vpc_id            = aws_vpc.main_vpc.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = "${var.aws_region}a"
+  vpc_id                  = aws_vpc.main_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
 
   tags = {
@@ -37,9 +37,9 @@ resource "aws_subnet" "subnet_a" {
 }
 
 resource "aws_subnet" "subnet_b" {
-  vpc_id            = aws_vpc.main_vpc.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "${var.aws_region}b"
+  vpc_id                  = aws_vpc.main_vpc.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "${var.aws_region}b"
   map_public_ip_on_launch = true
 
   tags = {
@@ -83,17 +83,17 @@ resource "aws_db_subnet_group" "db_group" {
 
 # Security group to govern RDS ingress rules
 resource "aws_security_group" "db_sg" {
-  name        = "${var.app_name}-db-security-group"
+  name        = "${var.app_name}-db-sg"
   description = "Allows secure access to Postgres PGVECTOR database instances."
   vpc_id      = aws_vpc.main_vpc.id
 
-  # Ingress allowing internal VPC traffic and serverless connections
+  # Ingress restricted to the ECS task security group only - the database must not be reachable from the public internet
   ingress {
-    description = "Postgres protocol connector"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "Postgres protocol connector, ECS tasks only"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_tasks_sg.id]
   }
 
   egress {
@@ -118,7 +118,7 @@ resource "random_password" "db_password" {
 # AWS Secret Manager for secure storage of Database Password
 resource "aws_secretsmanager_secret" "db_password" {
   name                    = "${var.app_name}-db-password"
-  recovery_window_in_days = 0 
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "db_password_val" {
@@ -140,10 +140,10 @@ resource "aws_db_instance" "postgres_vector" {
   db_subnet_group_name   = aws_db_subnet_group.db_group.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   skip_final_snapshot    = true
-  publicly_accessible    = true
+  publicly_accessible    = false
 
   tags = {
-    Name = "agentic-rds-vector"
+    Name = "${var.app_name}-postgres"
   }
 }
 
@@ -275,6 +275,10 @@ resource "aws_security_group" "ecs_tasks_sg" {
     from_port   = 0
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.app_name}-ecs-tasks-sg"
   }
 }
 

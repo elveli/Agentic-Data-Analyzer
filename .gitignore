@@ -20,3 +20,5 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 crash.log
+backend.hcl
+!backend.hcl.example

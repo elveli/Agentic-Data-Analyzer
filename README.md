@@ -104,7 +104,9 @@ aws rds describe-db-instances \
 ## 🚀 Local Quickstart
 
 ### 1. Configure Secrets
-Ensure you have your Gemini API secret key. Copy `.env.example` to `.env` :
+Ensure you have your Gemini API secret key. The Google Gemini API powers the AI capabilities of this application, such as analyzing data chunks, generating insights, and synthesizing narratives. You can get a free API key from [Google AI Studio](https://aistudio.google.com). 
+
+Copy `.env.example` to `.env` :
 ```bash
 cp .env.example .env
 ```
@@ -154,5 +156,5 @@ To deploy automatically on every code push:
    - `AWS_SECRET_ACCESS_KEY`: Your target AWS secret access key.
    - `AWS_DEFAULT_REGION`: Your target AWS region.
    - `AWS_DB_PASSWORD`: A secure text password of your choosing that will be used to initialize the Postgres vector instance admin account.
-   - `GEMINI_API_KEY`: Your Gemini credentials used server-side.
+   - `GEMINI_API_KEY`: Your Gemini API credentials used server-side to power the AI data analysis engine.
 3. Push to `main` branch to trigger the action.

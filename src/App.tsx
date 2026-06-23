@@ -39,6 +39,95 @@ import {
 } from "recharts";
 import { templates, tfFiles, pipelineCodeSnippetNode, Step, ExecutionLog } from "./data";
 
+// Support string contents in-app for visual files
+const githubWorkflowStr = `name: Docker Build & Serve to AWS via Terraform
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    name: CI/CD AWS Serverless Agent Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          
+      - name: Build Application
+        run: |
+          npm ci
+          npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: \${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build & Push Docker image
+        env:
+          ECR_REGISTRY: \${{ steps.login-ecr.registry }}
+          ECR_REPOSITORY: agentic-data-analyzer
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Run Terraform
+        env:
+          TF_VAR_aws_region: \${{ secrets.AWS_DEFAULT_REGION }}
+          TF_VAR_db_password: \${{ secrets.AWS_DB_PASSWORD }}
+          TF_VAR_gemini_api_key: \${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd terraform
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan`;
+
+const tFReadme = `# Agentic Data Analyzer - Low-Cost serverless LLM Data Processing Pipeline (AWS edition)
+
+This project provides an **AI Agentic Framework** that automates complex data analysis tasks (ingestion, sanitization, Vector search sync, trend discovery, forecasting, and narrative synthesis) using Google Gemini and serverless AWS infrastructure.
+
+## 🛠️ System Architecture
+
+1. **Compute (AWS App Runner)**: Implements the Node.js/Express API and React client in a single container. Since AWS App Runner supports auto-scaling to zero or lowest memory settings when idle, platform costs are highly optimized.
+2. **Database (Amazon RDS PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native \`pgvector\` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance class to a small burstable \`db.t4g.micro\` keeps the database running for around **$11.50/month**.
+3. **LLM Engine (Google Gemini)**: Driven via the Node \`@google/genai\` TypeScript SDK server-side on App Runner, securing keys via AWS Secrets Manager.
+
+---
+
+## 🚀 Deployment Instructions
+
+### Local Development
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+Spin up this entire low-cost cloud ecosystem in your AWS Account:
+\`\`\`bash
+cd terraform
+terraform init
+terraform apply -var="db_password=YOPASS" -var="gemini_api_key=GEMINI_KEY"
+\`\`\``;
+
 export default function App() {
   // Navigation & Active state files
   const [selectedFile, setSelectedFile] = useState<string>("README.md");
@@ -778,20 +867,20 @@ Your data ingestion and reasoning analysis completed successfully with custom co
                   </div>
                   <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg space-y-1.5">
                     <h5 className="text-emerald-400 font-bold">1536-Dimensional Vectors</h5>
-                    <p className="text-[11px] text-slate-400">Calculates semantic proximity fast using standard index profiles directly supported by Google Cloud SQL.</p>
+                    <p className="text-[11px] text-slate-400">Calculates semantic proximity fast using standard index profiles directly supported by Amazon RDS PostgreSQL.</p>
                   </div>
                 </div>
 
                 <h4 className="text-white font-bold text-sm uppercase tracking-wider mt-4">2. Continuous Automated Code Shipments</h4>
                 <p>
-                  Every push to your central repository main branch engages our `.github/workflows/deploy.yml` pipeline. This builds the consolidated Express multi-agent runner image, uploads it into Google Container Registry, and triggers high-speed infrastructure redeployment via Terraform automatically.
+                  Every push to your central repository main branch engages our `.github/workflows/deploy.yml` pipeline. This builds the consolidated Express multi-agent runner image, uploads it into Amazon Elastic Container Registry (ECR), and triggers high-speed infrastructure redeployment via Terraform automatically.
                 </p>
 
                 <div className="p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-400 font-mono text-[11px] space-y-1">
                   <div>1. git push origin main</div>
                   <div className="text-indigo-400">2. Github Runner executes automated tests & builds production Docker image</div>
-                  <div>3. Uploads output container directly into GCR</div>
-                  <div className="text-emerald-400">4. Terraform applies variable state and deploys serverless Cloud Run safely</div>
+                  <div>3. Uploads output container directly into Amazon ECR</div>
+                  <div className="text-emerald-400">4. Terraform applies variable state and deploys serverless AWS App Runner safely</div>
                 </div>
               </div>
             </div>
@@ -859,98 +948,4 @@ Your data ingestion and reasoning analysis completed successfully with custom co
     </div>
   );
 }
-
-// Support string contents in-app for visual files
-const githubWorkflowStr = `name: Docker Build & Serve to AWS via Terraform
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    name: CI/CD AWS Serverless Agent Deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies & run build check
-        run: |
-          npm ci
-          npm run build
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: \${{ secrets.AWS_DEFAULT_REGION }}
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build & Push Docker image
-        env:
-          ECR_REGISTRY: \${{ steps.login-ecr.registry }}
-          ECR_REPOSITORY: agentic-data-analyzer
-          IMAGE_TAG: latest
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-
-      - name: Run Terraform
-        env:
-          TF_VAR_aws_region: \${{ secrets.AWS_DEFAULT_REGION }}
-          TF_VAR_db_password: \${{ secrets.AWS_DB_PASSWORD }}
-          TF_VAR_gemini_api_key: \${{ secrets.GEMINI_API_KEY }}
-        run: |
-          cd terraform
-          terraform init
-          terraform plan -out=tfplan
-          terraform apply -auto-approve tfplan`;
-
-const tFReadme = `# Agentic Data Analyzer - Low-Cost serverless LLM Data Processing Pipeline (AWS edition)
-
-This project provides an **AI Agentic Framework** that automates complex data analysis tasks (ingestion, sanitization, Vector search sync, trend discovery, forecasting, and narrative synthesis) using Google Gemini and serverless AWS infrastructure.
-
-## 🛠️ System Architecture
-
-The infrastructure is optimized to provide high durability, extreme scalability, and **lowest possible cost** (under $15/month for low-usage development environments):
-
-1. **Compute (AWS App Runner)**: Implements the Node.js/Express API and React client in a single container. Since AWS App Runner supports auto-scaling to zero or lowest memory settings when idle, platform costs are highly optimized.
-2. **Database (Amazon RDS PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native \`pgvector\` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance class to a small burstable \`db.t4g.micro\` keeps the database running for around **$11.50/month**.
-3. **LLM Engine (Google Gemini)**: Driven via the Node \`@google/genai\` TypeScript SDK server-side on App Runner, securing keys via AWS Secrets Manager.
-
----
-
-## 🚀 Local Quickstart & Cloud Provisioning
-
-Configure secrets inside \`.env\` first:
-\`\`\`bash
-cp .env.example .env
-npm install
-npm run dev
-\`\`\`
-
-Spin up this entire low-cost cloud ecosystem in your AWS Account:
-\`\`\`bash
-cd terraform
-terraform init
-terraform apply -var="db_password=YOPASS" -var="gemini_api_key=GEMINI_KEY"
-\`\`\``;
 

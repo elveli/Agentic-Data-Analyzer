@@ -6,9 +6,9 @@ This project provides an **AI Agentic Framework** that automates complex data an
 
 The infrastructure is optimized to provide high durability, extreme scalability, and **lowest possible cost** (under $15/month for low-usage development environments):
 
-1. **Compute (Cloud Run)**: Implements the Node.js/Express API and React client in a single container. Since Cloud Run scales down to 0 when idle, idle costs are strictly **$0.00**.
-2. **Database (Cloud SQL PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native `pgvector` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance to `db-f1-micro` keeps the database running for around **$9.90/month**.
-3. **LLM Engine (Google Gemini)**: Driven via the Node `@google/genai` TypeScript SDK server-side on Cloud Run, securing keys via GCP Secret Manager.
+1. **Compute (AWS App Runner)**: Implements the Node.js/Express API and React client in a single container. Since AWS App Runner supports auto-scaling to zero or lowest memory settings when idle, platform costs are highly optimized.
+2. **Database (Amazon RDS PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native `pgvector` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance class to a small burstable `db.t4g.micro` keeps the database running for around **$11.50/month**.
+3. **LLM Engine (Google Gemini)**: Driven via the Node `@google/genai` TypeScript SDK server-side on App Runner, securing keys via AWS Secrets Manager.
 
 ---
 
@@ -19,7 +19,7 @@ The infrastructure is optimized to provide high durability, extreme scalability,
 - `/terraform/`: Infrastructure-as-code files:
   - `main.tf`: Declares VPC networks, firewall parameters, serverless access connectors, postgres vector databases, and container host policies.
   - `providers.tf`, `variables.tf`, `outputs.tf`: Full terraform config structures.
-- `/.github/workflows/deploy.yml`: Production CI/CD workflow pushing code to Google Cloud Run and executing `terraform apply` seamlessly on commit.
+- `/.github/workflows/deploy.yml`: Production CI/CD workflow pushing code to Amazon ECR and executing `terraform apply` seamlessly on commit.
 
 ---
 
@@ -44,7 +44,7 @@ Open your browser at `http://localhost:3000`.
 
 ## ☁️ Cloud Provisioning via Terraform
 
-To spin up this entire low-cost ecosystem in your Google Cloud Project:
+To spin up this entire low-cost ecosystem in your AWS Account:
 
 ```bash
 cd terraform
@@ -54,13 +54,13 @@ terraform init
 
 # Review the planned list of resources
 terraform plan \
-  -var="project_id=YOUR_PROJECT_ID" \
+  -var="aws_region=YOUR_AWS_REGION" \
   -var="db_password=YOUR_SECURE_PASSWORD" \
   -var="gemini_api_key=YOUR_GEMINI_KEY"
 
-# Provision infrastructure on GCP
+# Provision infrastructure on AWS
 terraform apply \
-  -var="project_id=YOUR_PROJECT_ID" \
+  -var="aws_region=YOUR_AWS_REGION" \
   -var="db_password=YOUR_SECURE_PASSWORD" \
   -var="gemini_api_key=YOUR_GEMINI_KEY"\
   -auto-approve
@@ -72,8 +72,9 @@ terraform apply \
 To deploy automatically on every code push:
 1. Configure your GitHub repository.
 2. Set up GitHub Secrets:
-   - `GCP_PROJECT_ID`: Your target Google Cloud project identifier.
-   - `GCP_SA_KEY`: JSON service account credential string that has permissions for Cloud Run Admin, Storage Admin, and SQL Admin.
-   - `GCP_DB_PASSWORD`: Secure text password for postgres vector instance admin.
+   - `AWS_ACCESS_KEY_ID`: Your target AWS access key ID.
+   - `AWS_SECRET_ACCESS_KEY`: Your target AWS secret access key.
+   - `AWS_DEFAULT_REGION`: Your target AWS region.
+   - `AWS_DB_PASSWORD`: Secure text password for postgres vector instance admin.
    - `GEMINI_API_KEY`: Your Gemini credentials used server-side.
 3. Push to `main` branch to trigger the action.

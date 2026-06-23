@@ -74,7 +74,7 @@ resource "aws_db_instance" "postgres_vector" {
   publicly_accessible  = true
 }
 
-# Deploy AWS App Runner serverless cluster (Similar to GCP Cloud Run, scaling automatically to traffic need)
+# Deploy AWS App Runner serverless cluster (scaling automatically to traffic need)
 resource "aws_apprunner_service" "agent_runner" {
   service_name = var.app_name
 
@@ -161,7 +161,10 @@ async function runPipeline(dataStr, userGoal) {
   console.log("[VECTOR SYNC] Connecting to scalable Cloud SQL database...");
   const pgClient = new Client({
     host: process.env.DB_HOST,
-    user: "agent_admin",\n    password: process.env.DB_PASS,\n    database: "agentic_workspace"\n  });
+    user: "agent_admin",
+    password: process.env.DB_PASS,
+    database: "agentic_workspace"
+  });
   await pgClient.connect();
 
   console.log("[VECTOR SYNC] Generating 1536-dim vector embeddings from model...");

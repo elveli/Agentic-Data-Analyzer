@@ -67,6 +67,27 @@ Once you have deployed the application to AWS using Terraform or GitHub Actions,
 - All the App Runner logs and RDS metrics are automatically forwarded to **CloudWatch**.
 - Navigate to **CloudWatch** -> **Log groups** to query historical logs or set up error alerting.
 
+### 4. AWS CLI (Debugging & Logs)
+For developers preferring the terminal, you can stream logs and check service status using the AWS CLI:
+
+**View App Runner Service Status:**
+```bash
+aws apprunner list-services --region YOUR_AWS_REGION
+```
+
+**Tail App Runner Application Logs:**
+(Note: Replace `SERVICE_ARN` with your actual service ARN from the command above)
+```bash
+aws logs tail /aws/apprunner/agentic-data-analyzer/application --follow
+```
+
+**Check Database Status:**
+```bash
+aws rds describe-db-instances \
+    --db-instance-identifier agentic-data-analyzer-postgres \
+    --query 'DBInstances[*].[DBInstanceStatus, Endpoint.Address]'
+```
+
 ---
 
 ## 📁 Directory Structure

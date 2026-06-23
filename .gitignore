@@ -2,9 +2,21 @@ node_modules/
 build/
 dist/
 coverage/
+server.js
+*.tsbuildinfo
 .DS_Store
 *.log
 .env*
 !.env.example
-.terraform*
-terraform.*
+
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log

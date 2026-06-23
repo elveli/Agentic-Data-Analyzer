@@ -1,0 +1,6 @@
+{
+  "name": "Agentic Data Analyzer",
+  "description": "AI Agentic Framework that automates complex data analysis, generating serverless Terraform infrastructure and CI/CD workflows alongside a live executing agent.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

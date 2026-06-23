@@ -1,0 +1,70 @@
+name: Docker Build & Serve to AWS via Terraform
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: CI/CD AWS Serverless Agent Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Check out code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Setup Node environment for pipeline linting or pre-build tests
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies & run build check
+        run: |
+          npm ci
+          npm run build
+
+      # 3. Configure AWS Credentials safely from repository secrets
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      # 4. Log in to Amazon Elastic Container Registry (ECR)
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 5. Build, tag, and push Docker image to AWS ECR
+      - name: Build & Push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
+          ECR_REPOSITORY: agentic-data-analyzer
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # 6. Setup Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      # 7. Run Terraform Init, Plan and Apply targeting AWS cloud resources
+      - name: Run Terraform
+        env:
+          TF_VAR_aws_region: ${{ secrets.AWS_DEFAULT_REGION }}
+          TF_VAR_db_password: ${{ secrets.AWS_DB_PASSWORD }}
+          TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd terraform
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+

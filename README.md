@@ -8,7 +8,7 @@ The infrastructure is optimized to provide high durability, extreme scalability,
 
 1. **Compute (AWS ECS Fargate)**: Implements the Node.js/Express API and React client in a single container. Since AWS ECS Fargate supports serverless auto-scaling and scales based on traffic, platform costs are highly optimized.
 2. **Database (Amazon RDS PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native `pgvector` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance class to a small burstable `db.t4g.micro` keeps the database running for around **$11.50/month**.
-3. **LLM Engine (Google Gemini)**: Driven via the Node `@google/genai` TypeScript SDK server-side on ECS Fargate. (Note: Gemini itself is an external Google Cloud API, not an AWS resource deployed via Terraform. The SDK is installed as an NPM package during the Docker build process and the API key is secured via AWS Secrets Manager).
+3. **LLM Engine (Google Gemini)**: `server.ts` calls Gemini server-side via the `@google/genai` npm package (just a normal dependency in `package.json`, installed like any other during `npm ci` in the Docker build). Gemini itself is an external Google Cloud API, not an AWS resource Terraform deploys. The API key is stored in AWS Secrets Manager and the ECS task definition's `secrets` field pulls it from there at container startup — it's resolved into `GEMINI_API_KEY` at runtime, not embedded as plaintext in the task definition.
 
 ### System Diagram
 

@@ -181,6 +181,28 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Allows the ECS execution role to resolve the `secrets` block in the task definition
+# (DB_PASS / GEMINI_API_KEY) at container startup, instead of those values living in
+# the task definition itself.
+resource "aws_iam_role_policy" "ecs_secrets_access" {
+  name = "${var.app_name}-ecs-secrets-access"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = ["secretsmanager:GetSecretValue"]
+        Effect = "Allow"
+        Resource = [
+          aws_secretsmanager_secret.db_password.arn,
+          aws_secretsmanager_secret.gemini_key.arn
+        ]
+      }
+    ]
+  })
+}
+
 # Create standard private Amazon ECR Repository for the built Node multi-agent image container
 resource "aws_ecr_repository" "agent_ecr" {
   name                 = var.app_name
@@ -313,9 +335,13 @@ resource "aws_ecs_task_definition" "app_task" {
         { name = "NODE_ENV", value = "production" },
         { name = "DB_HOST", value = aws_db_instance.postgres_vector.address },
         { name = "DB_USER", value = "agent_admin" },
-        { name = "DB_PASS", value = random_password.db_password.result },
-        { name = "DB_NAME", value = "agentic_workspace" },
-        { name = "GEMINI_API_KEY", value = var.gemini_api_key }
+        { name = "DB_NAME", value = "agentic_workspace" }
+      ]
+      # Resolved by the ECS execution role at container startup (see aws_iam_role_policy.ecs_secrets_access)
+      # rather than embedded as plaintext in the task definition / Terraform state.
+      secrets = [
+        { name = "DB_PASS", valueFrom = aws_secretsmanager_secret.db_password.arn },
+        { name = "GEMINI_API_KEY", valueFrom = aws_secretsmanager_secret.gemini_key.arn }
       ]
       logConfiguration = {
         logDriver = "awslogs"

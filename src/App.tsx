@@ -215,7 +215,7 @@ aws rds describe-db-instances \\
 ### 1. Configure Secrets
 Ensure you have your Gemini API secret key. The Google Gemini API powers the AI capabilities of this application, such as analyzing data chunks, generating insights, and synthesizing narratives. You can get a free API key from [Google AI Studio](https://aistudio.google.com). 
 
-Copy \`.env.example\` to \`.env\` :
+From the root directory of the project (where this README is located), copy \`.env.example\` to \`.env\` :
 \`\`\`bash
 cp .env.example .env
 \`\`\`
@@ -228,6 +228,16 @@ npm install
 npm run dev
 \`\`\`
 Open your browser at \`http://localhost:3000\`.
+
+### 3. Run Locally with Docker Desktop
+If you prefer to run the entire stack (Node.js App + PostgreSQL pgvector Database) locally using Docker:
+
+1. Ensure **Docker Desktop** is installed and running.
+2. Build and start the containers using Docker Compose:
+\`\`\`bash
+docker-compose up --build
+\`\`\`
+3. Open your browser at \`http://localhost:3000\`. The application will connect to the local Dockerized PostgreSQL instance automatically.
 
 ---
 

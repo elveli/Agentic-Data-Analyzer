@@ -13,6 +13,11 @@ variable "app_name" {
 variable "gemini_api_key" {
   type        = string
   sensitive   = true
-  description = "Google Gemini API Key for serverless logic reasoning."
+  description = "Google Gemini API Key for serverless logic reasoning. Pass via TF_VAR_gemini_api_key or terraform.tfvars."
+
+  validation {
+    condition     = length(trimspace(var.gemini_api_key)) > 0
+    error_message = "gemini_api_key must be set. Export TF_VAR_gemini_api_key or add it to terraform.tfvars before applying."
+  }
 }
 

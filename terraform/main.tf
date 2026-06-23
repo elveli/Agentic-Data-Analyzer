@@ -1,3 +1,9 @@
+data "aws_rds_engine_version" "postgres" {
+  engine  = "postgres"
+  version = "16"
+  latest  = true
+}
+
 # AWS VPC & Networking setup for proper isolation
 resource "aws_vpc" "main_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -126,7 +132,7 @@ resource "aws_db_instance" "postgres_vector" {
   allocated_storage      = 20
   max_allocated_storage  = 100
   engine                 = "postgres"
-  engine_version         = "16.3" # Native support for pgvector index sync
+  engine_version         = data.aws_rds_engine_version.postgres.version
   instance_class         = "db.t4g.micro" # Under $12/month for massive cost savings
   db_name                = "agentic_workspace"
   username               = "agent_admin"

@@ -126,7 +126,7 @@ resource "aws_db_instance" "postgres_vector" {
   allocated_storage      = 20
   max_allocated_storage  = 100
   engine                 = "postgres"
-  engine_version         = "15.4" # Native support for pgvector index sync
+  engine_version         = "16.3" # Native support for pgvector index sync
   instance_class         = "db.t4g.micro" # Under $12/month for massive cost savings
   db_name                = "agentic_workspace"
   username               = "agent_admin"
@@ -172,7 +172,7 @@ resource "aws_iam_role" "apprunner_access_role" {
 
 resource "aws_iam_role_policy_attachment" "apprunner_ecr" {
   role       = aws_iam_role.apprunner_access_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECMAccess"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
 # Create standard private Amazon ECR Repository for the built Node multi-agent image container

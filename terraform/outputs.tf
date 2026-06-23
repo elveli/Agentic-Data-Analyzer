@@ -1,6 +1,6 @@
 output "app_url" {
-  value       = aws_apprunner_service.agent_runner.service_url
-  description = "The public web URL of the AWS App Runner automated analytics agent."
+  value       = "http://${aws_lb.main.dns_name}"
+  description = "The public web URL of the AWS ECS Fargate automated analytics agent."
 }
 
 output "vector_db_address" {

@@ -6,27 +6,27 @@ This project provides an **AI Agentic Framework** that automates complex data an
 
 The infrastructure is optimized to provide high durability, extreme scalability, and **lowest possible cost** (under $15/month for low-usage development environments):
 
-1. **Compute (AWS App Runner)**: Implements the Node.js/Express API and React client in a single container. Since AWS App Runner supports auto-scaling to zero or lowest memory settings when idle, platform costs are highly optimized.
+1. **Compute (AWS ECS Fargate)**: Implements the Node.js/Express API and React client in a single container. Since AWS ECS Fargate supports serverless auto-scaling and scales based on traffic, platform costs are highly optimized.
 2. **Database (Amazon RDS PostgreSQL + PGVECTOR)**: Serves as both your relational configuration store and your **Scalable Vector Database** using Postgres' native `pgvector` extension. Using a single database for both roles saves hundreds of dollars compared to independent vector products (Pinecone, Weaviate setups). Setting the instance class to a small burstable `db.t4g.micro` keeps the database running for around **$11.50/month**.
-3. **LLM Engine (Google Gemini)**: Driven via the Node `@google/genai` TypeScript SDK server-side on App Runner. (Note: Gemini itself is an external Google Cloud API, not an AWS resource deployed via Terraform. The SDK is installed as an NPM package during the Docker build process and the API key is secured via AWS Secrets Manager).
+3. **LLM Engine (Google Gemini)**: Driven via the Node `@google/genai` TypeScript SDK server-side on ECS Fargate. (Note: Gemini itself is an external Google Cloud API, not an AWS resource deployed via Terraform. The SDK is installed as an NPM package during the Docker build process and the API key is secured via AWS Secrets Manager).
 
 ### System Diagram
 
 ```mermaid
 graph TD
-    User([User / Browser]) -->|HTTPS| AppRunner[AWS App Runner]
+    User([User / Browser]) -->|HTTPS| ECSFargate[AWS ECS Fargate]
     
     subgraph "AWS Ecosystem"
-      AppRunner -.->|Reads Secrets| SecretsManager[AWS Secrets Manager]
-      AppRunner <-->|Reads/Writes Vectors| RDS[(Amazon RDS PostgreSQL\n+ pgvector)]
+      ECSFargate -.->|Reads Secrets| SecretsManager[AWS Secrets Manager]
+      ECSFargate <-->|Reads/Writes Vectors| RDS[(Amazon RDS PostgreSQL\n+ pgvector)]
     end
     
-    AppRunner <-->|API Calls| Gemini[Google Gemini API]
+    ECSFargate <-->|API Calls| Gemini[Google Gemini API]
     
     subgraph "CI/CD Pipeline (GitHub Actions)"
       GitHub[GitHub Repository] -->|1. Build & Push Image| ECR[Amazon ECR]
       GitHub -->|2. Apply Terraform| AWS_Infra[AWS Infrastructure]
-      ECR -->|Deploy| AppRunner
+      ECR -->|Deploy| ECSFargate
     end
 ```
 
@@ -52,10 +52,10 @@ Once running locally or deployed, open the application in your browser to intera
 
 Once you have deployed the application to AWS using Terraform or GitHub Actions, you can monitor the application and track its behavior natively inside the AWS Management Console:
 
-### 1. AWS App Runner Console (Compute & Logs)
-- Navigate to **App Runner** in the AWS Console.
-- Select your service (`agentic-data-analyzer`).
-- **Logs**: Click the **Logs** tab to see real-time output from your Node.js Express server. This is where you will see the vector embeddings syncing and Gemini API calls occurring.
+### 1. AWS ECS Console (Compute & Logs)
+- Navigate to **Elastic Container Service** in the AWS Console.
+- Select your cluster (`agentic-data-analyzer-cluster`).
+- **Logs**: Click the **Logs** tab on your task or service to see real-time output from your Node.js Express server. This is where you will see the vector embeddings syncing and Gemini API calls occurring.
 - **Metrics**: View the CPU usage, memory utilization, and active request count under the **Metrics** tab.
 
 ### 2. Amazon RDS (Database Insights & PGVECTOR)
@@ -71,21 +71,20 @@ Once you have deployed the application to AWS using Terraform or GitHub Actions,
   4. Once logged in, you can run queries on the `document_embeddings` table to inspect the exact high-dimensional vectors stored by the LLM.
 
 ### 3. AWS CloudWatch (Alarms & Dashboards)
-- All the App Runner logs and RDS metrics are automatically forwarded to **CloudWatch**.
+- All the ECS Fargate logs and RDS metrics are automatically forwarded to **CloudWatch**.
 - Navigate to **CloudWatch** -> **Log groups** to query historical logs or set up error alerting.
 
 ### 4. AWS CLI (Debugging & Logs)
 For developers preferring the terminal, you can stream logs and check service status using the AWS CLI:
 
-**View App Runner Service Status:**
+**View ECS Service Status:**
 ```bash
-aws apprunner list-services --region YOUR_AWS_REGION
+aws ecs describe-services --cluster agentic-data-analyzer-cluster --services agentic-data-analyzer-service --region YOUR_AWS_REGION
 ```
 
-**Tail App Runner Application Logs:**
-(Note: Replace `SERVICE_ARN` with your actual service ARN from the command above)
+**Tail ECS Application Logs:**
 ```bash
-aws logs tail /aws/apprunner/agentic-data-analyzer/application --follow
+aws logs tail /ecs/agentic-data-analyzer --follow
 ```
 
 **Check Database Status:**

@@ -92,27 +92,17 @@ resource "aws_db_instance" "postgres_vector" {
   publicly_accessible  = true
 }
 
-# Deploy AWS App Runner serverless cluster (scaling automatically to traffic need)
-resource "aws_apprunner_service" "agent_runner" {
-  service_name = var.app_name
+# Deploy AWS ECS Fargate serverless cluster (scaling automatically to traffic need)
+resource "aws_ecs_cluster" "main" {
+  name = "\${var.app_name}-cluster"
+}
 
-  source_configuration {
-    image_repository {
-      image_identifier      = "\${aws_ecr_repository.agent_ecr.repository_url}:latest"
-      image_repository_type = "ECR"
-      image_configuration {
-        port = "3000"
-        runtime_environment_variables = {
-          NODE_ENV       = "production"
-          DB_HOST        = aws_db_instance.postgres_vector.address
-          DB_USER        = "agent_admin"
-          DB_PASS        = random_password.db_password.result
-          DB_NAME        = "agentic_workspace"
-          GEMINI_API_KEY = var.gemini_api_key
-        }
-      }
-    }
-  }
+resource "aws_ecs_service" "app_service" {
+  name            = "\${var.app_name}-service"
+  cluster         = aws_ecs_cluster.main.id
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  # (Task definition and Load balancer config omitted for brevity)
 }`,
   "variables.tf": `variable "aws_region" {
   type        = string
@@ -132,8 +122,8 @@ variable "gemini_api_key" {
   description = "Google Gemini API Key for serverless logic reasoning."
 }`,
   "outputs.tf": `output "app_url" {
-  value       = aws_apprunner_service.agent_runner.service_url
-  description = "The public web URL of the AWS App Runner automated analytics agent."
+  value       = "http://\${aws_lb.main.dns_name}"
+  description = "The public web URL of the AWS ECS Fargate automated analytics agent."
 }
 
 output "vector_db_address" {

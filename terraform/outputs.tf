@@ -13,3 +13,8 @@ output "database_name" {
   description = "The relational and vector schema container database name."
 }
 
+output "bastion_instance_id" {
+  value       = aws_instance.bastion.id
+  description = "Target this with `aws ssm start-session --target <id> --document-name AWS-StartPortForwardingSessionToRemoteHost ...` to tunnel to RDS from your laptop."
+}
+

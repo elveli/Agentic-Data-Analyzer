@@ -4,6 +4,23 @@ data "aws_rds_engine_version" "postgres" {
   latest  = true
 }
 
+# Amazon Linux 2023 ships the SSM Agent preinstalled - no extra setup needed for SSM access.
+data "aws_ami" "al2023_arm" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name = "name"
+    # Excludes the "al2023-ami-minimal-*" variant, which doesn't ship the SSM Agent preinstalled.
+    values = ["al2023-ami-2*-arm64"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
+  }
+}
+
 # AWS VPC & Networking setup for proper isolation
 resource "aws_vpc" "main_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -87,13 +104,13 @@ resource "aws_security_group" "db_sg" {
   description = "Allows secure access to Postgres PGVECTOR database instances."
   vpc_id      = aws_vpc.main_vpc.id
 
-  # Ingress restricted to the ECS task security group only - the database must not be reachable from the public internet
+  # Ingress restricted to the ECS tasks and the SSM bastion - the database must not be reachable from the public internet
   ingress {
-    description     = "Postgres protocol connector, ECS tasks only"
+    description     = "Postgres protocol connector, ECS tasks and SSM bastion only"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks_sg.id]
+    security_groups = [aws_security_group.ecs_tasks_sg.id, aws_security_group.bastion_sg.id]
   }
 
   egress {
@@ -412,6 +429,66 @@ resource "aws_appautoscaling_policy" "ecs_cpu_scaling" {
     target_value       = 60
     scale_in_cooldown  = 120
     scale_out_cooldown = 60
+  }
+}
+
+# SSM-managed bastion for reaching the private RDS instance from a laptop - no inbound ports,
+# no SSH keys. Use `aws ssm start-session ... --document-name AWS-StartPortForwardingSessionToRemoteHost`
+# (see README "Login to Database Endpoint") to tunnel to RDS through it.
+resource "aws_security_group" "bastion_sg" {
+  name        = "${var.app_name}-bastion-sg"
+  description = "SSM-managed bastion - no inbound ports required, agent connects outbound only"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.app_name}-bastion-sg"
+  }
+}
+
+resource "aws_iam_role" "bastion_role" {
+  name = "${var.app_name}-bastion-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "bastion_ssm" {
+  role       = aws_iam_role.bastion_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "bastion_profile" {
+  name = "${var.app_name}-bastion-profile"
+  role = aws_iam_role.bastion_role.name
+}
+
+resource "aws_instance" "bastion" {
+  ami                         = data.aws_ami.al2023_arm.id
+  instance_type               = "t4g.nano" # Under $4/month, idle except when you're tunneling through it
+  subnet_id                   = aws_subnet.subnet_a.id
+  vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.bastion_profile.name
+  associate_public_ip_address = true # Needed to reach the SSM endpoints - this VPC has no NAT gateway or SSM VPC endpoints
+
+  tags = {
+    Name = "${var.app_name}-bastion"
   }
 }
 

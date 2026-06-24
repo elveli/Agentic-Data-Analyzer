@@ -21,6 +21,8 @@ Each "Execute Analysis Process" run is a real sequential pipeline, not one LLM c
 
 This means a full run costs **3 Gemini API calls** (1 embedding + 2 `generateContent`), each taking anywhere from a few seconds to ~60s depending on model load. On the free tier (20 `generateContent` requests/day at time of writing), that's roughly 10 full runs/day - plan accordingly if you're demoing this to a group, and expect occasional transient `503 UNAVAILABLE` errors under high model demand (the pipeline retries those automatically with backoff, but a `429 RESOURCE_EXHAUSTED` means the daily quota is actually spent and won't recover until it resets).
 
+> **Hit a `429 RESOURCE_EXHAUSTED` / "Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests"?** That's the free-tier daily cap (20 `generateContent` calls/day for `gemini-3.5-flash`), not a bug - the pipeline deliberately doesn't retry it (unlike transient `503`s) since retrying seconds later won't help. Options: (1) wait for the quota to reset (daily, around midnight Pacific time), (2) enable billing on the Google Cloud project behind your API key for much higher limits, or (3) use a separate API key for testing/load-testing so it doesn't share the same 20/day pool as real app traffic.
+
 ### System Diagram
 
 ```mermaid

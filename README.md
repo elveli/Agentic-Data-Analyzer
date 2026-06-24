@@ -89,7 +89,33 @@ Once you have deployed the application to AWS using Terraform or GitHub Actions,
      PGPASSWORD=$(aws secretsmanager get-secret-value --secret-id agentic-data-analyzer-db-password --region YOUR_AWS_REGION --query SecretString --output text) \
        psql -h localhost -p 15432 -U agent_admin -d agentic_workspace
      ```
-  4. Once connected, you can run queries on the `document_embeddings` table to inspect the exact high-dimensional vectors stored by the LLM. Ctrl+C the `ssm start-session` terminal when you're done to close the tunnel.
+  4. Once connected, inspect what the vector-store pipeline step has actually written. The schema is `id, run_id, content, embedding VECTOR(768), created_at` (see `ensureSchema` in `server.ts`):
+     ```sql
+     -- Confirm the pgvector extension and table exist (empty until the first real /api/analyze run with vector-store enabled)
+     \dx
+     \d document_embeddings
+
+     -- How many rows total, and the most recent ones (printing embedding itself would dump 768 floats per row - use vector_dims() instead)
+     SELECT count(*) FROM document_embeddings;
+     SELECT id, run_id, content, vector_dims(embedding) AS dims, created_at
+       FROM document_embeddings
+       ORDER BY created_at DESC
+       LIMIT 5;
+
+     -- Group by run_id to see one row per pipeline execution (one /api/analyze call = one run_id, multiple rows = one per parsed dataset row)
+     SELECT run_id, count(*) AS rows_embedded, min(created_at), max(created_at)
+       FROM document_embeddings
+       GROUP BY run_id
+       ORDER BY max(created_at) DESC;
+
+     -- Real semantic similarity search: rows whose embedding is closest (cosine distance, the <=> operator) to a given row's embedding
+     SELECT id, content, embedding <=> (SELECT embedding FROM document_embeddings WHERE id = 1) AS distance
+       FROM document_embeddings
+       ORDER BY distance
+       LIMIT 5;
+     ```
+     That last query is the actual point of using pgvector here - it's how the agent would find semantically related past records (similar wording/values), not just exact keyword matches.
+  5. Ctrl+C the `ssm start-session` terminal when you're done to close the tunnel.
 
 ### 3. AWS CloudWatch (Alarms & Dashboards)
 - All the ECS Fargate logs and RDS metrics are automatically forwarded to **CloudWatch**.

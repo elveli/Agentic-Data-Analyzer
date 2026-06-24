@@ -289,7 +289,7 @@ export default function App() {
   // Database Connection Info
   const [vectorDBStatus, setVectorDBStatus] = useState({
     activeCount: 1840,
-    dimensions: 1536,
+    dimensions: 768,
     indexType: "HNSW",
     distanceMetric: "Cosine",
     health: 98
@@ -307,19 +307,12 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [analysisResult, setAnalysisResult] = useState<{
-    logs: { stepId: string; status: "success" | "error"; message: string }[];
     insights: { category: string; title: string; details: string }[];
     chartData: any[];
     chartType: "line" | "bar" | "composed" | string;
     chartKeys: { primary: string; secondary?: string };
     markdownReport: string;
   } | null>({
-    logs: [
-      { stepId: "parsing", status: "success", message: "Parsed 6 rows & 4 columns cleanly from SaaS growth indicators dataset schema." },
-      { stepId: "vector-store", status: "success", message: "Successfully projected and stored data points into our PGVECTOR database under standard cosign index indices." },
-      { stepId: "anomaly-detector", status: "success", message: "Discovered noticeable 78% CPU utilization spike corresponding with ServerCost increase in Mar." },
-      { stepId: "reporter", status: "success", message: "Finished crafting a comprehensive 3-paragraph executive performance report summarizing SaaS dynamics." }
-    ],
     insights: [
       { category: "forecast", title: "Cost & CPU Discrepancy", details: "Server cost scales non-linearly when CPU exceeds 75% thresholds due to over-provisioning." },
       { category: "trend", title: "High Conversion Peak", details: "User influx spikes do not maintain proportional database load unless concurrent tasks exceed 4 threads." },
@@ -342,7 +335,7 @@ The agentic pipeline has processed the SaaS performance data indicators. There i
 #### Key Inferences Discovered:
 1. **Inefficient CPU Scaling**: ServerCost rises disproportionately as CpuAvg breaches **75%**. An intervention in container load-balancing is advised.
 2. **Growth Trend**: New users grew from **1200** in January to over **3400** in June, translating directly into a steady 2.8x scaling requirement.
-3. **Database Vector Mapping**: This data block has been successfully embedded with 1536-dimensional metrics and stored securely into our private local Postgres PGVECTOR index cluster, enabling instant future semantic query retrievals.`
+3. **Database Vector Mapping**: This data block has been successfully embedded with 768-dimensional metrics and stored securely into our private local Postgres PGVECTOR index cluster, enabling instant future semantic query retrievals.`
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -390,34 +383,6 @@ The agentic pipeline has processed the SaaS performance data indicators. There i
     };
 
     try {
-      // Stream logs state mimicking custom server container steps
-      const pStep = steps.find(s => s.id === "parsing");
-      if (pStep?.active) {
-        pushLog("parsing", "running", "Parser spawned. Sanitizing raw input records, stripping null elements...");
-        await new Promise(r => setTimeout(r, 1200));
-        pushLog("parsing", "success", "Ingestion completed. Raw table converted into standardized JSON structures.");
-      }
-
-      const vStep = steps.find(s => s.id === "vector-store");
-      if (vStep?.active) {
-        pushLog("vector-store", "running", "Contacting vector db... Projecting row states onto 1536 dimensional axes.");
-        await new Promise(r => setTimeout(r, 1200));
-        pushLog("vector-store", "success", "Sync confirmed. Inserted embedded entries into Postgres PGVECTOR cloud instance.");
-      }
-
-      const mStep = steps.find(s => s.id === "anomaly-detector");
-      if (mStep?.active) {
-        pushLog("anomaly-detector", "running", "Deploying mathematical analysis matrices. Scanning outlier correlations...");
-        await new Promise(r => setTimeout(r, 1200));
-        pushLog("anomaly-detector", "success", "Variance scanned. Flagged statistical anomalies and calculated coefficients.");
-      }
-
-      const rStep = steps.find(s => s.id === "reporter");
-      if (rStep?.active) {
-        pushLog("reporter", "running", "Waking LLM Narrative Writer... Constructing contextual response draft.");
-      }
-
-      // Execute live backend call
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
@@ -430,88 +395,49 @@ The agentic pipeline has processed the SaaS performance data indicators. There i
         })
       });
 
-      const resData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(resData.error || "Failed to analyze data package.");
+      if (!response.ok || !response.body) {
+        const errBody = await response.json().catch(() => ({} as any));
+        throw new Error(errBody.error || `Pipeline request failed (HTTP ${response.status}).`);
       }
 
-      // Complete reporter log
-      if (rStep?.active) {
-        pushLog("reporter", "success", "Executive narrative drafted and returned by core LLM successfully.");
-      }
+      // The server streams one event per real pipeline step as it actually executes,
+      // so this reflects genuine progress rather than a client-side timer.
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finished = false;
 
-      setAnalysisResult(resData);
-      
-      // Update local Vector storage mock counts slightly for visual fidelity
-      setVectorDBStatus(prev => ({
-        ...prev,
-        activeCount: prev.activeCount + Math.floor(Math.random() * 15) + 5,
-        health: 99
-      }));
+      while (!finished) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-    } catch (err: any) {
-      console.warn("Backend API encountered issue, running high-fidelity agent local client reasoning sandbox:", err);
-      // Fallback simulating accurate agent behavior if Gemini Key isn't populated or backend failed
-      pushLog("reporter", "error", "Gemini API key requested or server timeout. Switched to secure sandbox local reasoning system client.");
-      
-      // Assemble sandbox local results based on templates to keep experience fully unbroken and highly visual
-      setTimeout(() => {
-        let mockedChart: any[] = [];
-        let labelPrimary = "value";
-        let labelSecondary = "secondary";
-        
-        // Simple manual csv parser for local visualizer fallback
-        try {
-          const lines = rawData.trim().split("\n");
-          const headers = lines[0].split(",");
-          labelPrimary = headers[1] || "value";
-          labelSecondary = headers[2] || "secondary";
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
 
-          for (let i = 1; i < lines.length; i++) {
-            if (!lines[i]) continue;
-            const parts = lines[i].split(",");
-            const obj: any = { name: parts[0] };
-            for (let h = 1; h < headers.length; h++) {
-              obj[headers[h].trim()] = Number(parts[h]) || parts[h];
+        for (const rawEvent of events) {
+          if (!rawEvent.startsWith("data: ")) continue;
+          const event = JSON.parse(rawEvent.slice(6));
+
+          if (event.done) {
+            finished = true;
+            if (event.error) {
+              throw new Error(event.error);
             }
-            mockedChart.push(obj);
+            setAnalysisResult(event.result);
+            setVectorDBStatus(prev => ({
+              ...prev,
+              activeCount: prev.activeCount + Math.floor(Math.random() * 15) + 5,
+              health: 99
+            }));
+            break;
           }
-        } catch (e) {
-          mockedChart = [
-            { name: "P1", value: 120, secondary: 25 },
-            { name: "P2", value: 180, secondary: 40 },
-            { name: "P3", value: 150, secondary: 35 },
-            { name: "P4", value: 290, secondary: 85 }
-          ];
+
+          pushLog(event.stepId, event.status, event.message);
         }
-
-        const generatedSummary = `### Analysis Report (Local Reasoning Sandbox Engine)
-
-Your data ingestion and reasoning analysis completed successfully with custom configurations.
-
-#### Discovered Coordinates & Trends:
-1. **Dynamic Peaks Detected**: Highest calculated metrics map to the third index element in your uploaded set, illustrating anomalous spikes.
-2. **SaaS/E-Commerce Analysis**: High load indices correlate with the variable quantities. We recommend scaling database pooling to 6 threads.
-3. **Database Workspace Sync**: Fully integrated into our localized Vector database cache with standard indexing formats.`;
-
-        setAnalysisResult({
-          logs: [
-            { stepId: "parsing", status: "success", message: "Successfully evaluated and validated structure format." },
-            { stepId: "vector-store", status: "success", message: "Projected vector states cleanly inside Postgres index." },
-            { id: "anomaly-detector", status: "success", message: "Completed analysis of custom numerical points." } as any,
-            { stepId: "reporter", status: "success", message: "Drafted markdown narrative cleanly from sandbox calculations." }
-          ],
-          insights: [
-            { category: "trend", title: "Target Peak Discovered", details: "Observed dynamic variance in standard input arrays." },
-            { category: "forecast", title: "Cost & Scaling Warning", details: "Increased throughput implies system threshold alerts remain recommended." }
-          ],
-          chartData: mockedChart,
-          chartType: "line",
-          chartKeys: { primary: labelPrimary, secondary: labelSecondary },
-          markdownReport: generatedSummary
-        });
-      }, 800);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to run the agentic pipeline.");
     } finally {
       setIsAnalyzing(false);
     }

@@ -257,6 +257,26 @@ terraform apply \
 
 ---
 
+## 🧹 Tearing It Down
+
+To stop paying for the deployed infrastructure (RDS, ECS Fargate, ALB, the SSM bastion, etc.):
+
+```bash
+cd terraform
+terraform destroy \
+  -var="aws_region=YOUR_AWS_REGION" \
+  -var="gemini_api_key=YOUR_GEMINI_KEY"
+```
+
+This only destroys the resources in `terraform/main.tf`. **It deliberately leaves the remote state backend (the S3 bucket + DynamoDB table from `terraform/bootstrap/`) in place** - at rest, with no traffic, that backend costs a fraction of a cent per month (a tiny state file in S3, an empty pay-per-request DynamoDB table), so there's no cost reason to tear it down, and keeping it means redeploying later is just `terraform apply` again with no re-bootstrapping needed.
+
+**Things to know before you run this:**
+- **The RDS data is gone for good.** `skip_final_snapshot = true` means no backup is taken on deletion - any rows in `document_embeddings` are unrecoverable afterward. Fine for throwaway/demo data; not something you'd want on a database that matters.
+- **The ECR image is deleted too** (`force_delete = true` on the repository), but that's harmless - the next CI/CD run rebuilds and re-pushes it from source.
+- **This does not disable the CI/CD pipeline.** `.github/workflows/deploy.yml` still triggers `terraform apply` on every push to `main`, and the Terraform config still describes all this infrastructure - so the *next push to `main` recreates everything automatically*, billing and all. If you want costs to actually stay at zero, don't push to `main` again until you're ready to redeploy (there's no separate on/off switch for the workflow in this repo - the only thing that stops it from reprovisioning is not triggering it).
+
+---
+
 ## 🔄 CI/CD Git Deployment
 This section is about deploying to **AWS** only - it's unrelated to the local Docker Compose setup above. `docker-compose.yml` and this workflow both build from the same `Dockerfile`, but `docker-compose up` never touches GitHub Actions, ECR, or Terraform, and this workflow never runs `docker-compose` - it builds straight from the `Dockerfile` and deploys to real AWS infrastructure.
 

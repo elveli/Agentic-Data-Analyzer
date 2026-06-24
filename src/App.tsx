@@ -78,7 +78,7 @@ jobs:
 
       - name: Build & Push Docker image
         env:
-          ECR_REGISTRY: \${{ steps.login-ecr.registry }}
+          ECR_REGISTRY: \${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: agentic-data-analyzer
           IMAGE_TAG: latest
         run: |

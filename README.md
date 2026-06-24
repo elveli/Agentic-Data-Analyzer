@@ -200,6 +200,8 @@ terraform apply \
 ---
 
 ## 🔄 CI/CD Git Deployment
+This section is about deploying to **AWS** only - it's unrelated to the local Docker Compose setup above. `docker-compose.yml` and this workflow both build from the same `Dockerfile`, but `docker-compose up` never touches GitHub Actions, ECR, or Terraform, and this workflow never runs `docker-compose` - it builds straight from the `Dockerfile` and deploys to real AWS infrastructure.
+
 The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the app, pushes the Docker image to Amazon ECR, and runs `terraform apply` automatically on every push to `main`. The database password is not a secret you provide — Terraform generates and stores it for you in AWS Secrets Manager.
 
 To enable this for your own fork/repo:

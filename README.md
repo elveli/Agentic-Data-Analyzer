@@ -87,6 +87,15 @@ For developers preferring the terminal, you can stream logs and check service st
 aws ecs describe-services --cluster agentic-data-analyzer-cluster --services agentic-data-analyzer-service --region YOUR_AWS_REGION
 ```
 
+**List Running Tasks:**
+```bash
+aws ecs list-tasks --cluster agentic-data-analyzer-cluster --region YOUR_AWS_REGION
+```
+Useful for confirming how many tasks are currently up (e.g. while watching Application Auto Scaling react to load - see "Watching it scale" above). Feed a task ARN from the output into `describe-tasks` for its health/IP/last status:
+```bash
+aws ecs describe-tasks --cluster agentic-data-analyzer-cluster --tasks TASK_ARN --region YOUR_AWS_REGION
+```
+
 **Tail ECS Application Logs:**
 ```bash
 aws logs tail /ecs/agentic-data-analyzer --follow

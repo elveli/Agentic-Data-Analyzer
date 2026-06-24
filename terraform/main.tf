@@ -352,7 +352,8 @@ resource "aws_ecs_task_definition" "app_task" {
         { name = "NODE_ENV", value = "production" },
         { name = "DB_HOST", value = aws_db_instance.postgres_vector.address },
         { name = "DB_USER", value = "agent_admin" },
-        { name = "DB_NAME", value = "agentic_workspace" }
+        { name = "DB_NAME", value = "agentic_workspace" },
+        { name = "DB_SSL", value = "true" }
       ]
       # Resolved by the ECS execution role at container startup (see aws_iam_role_policy.ecs_secrets_access)
       # rather than embedded as plaintext in the task definition / Terraform state.

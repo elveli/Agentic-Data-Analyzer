@@ -47,6 +47,10 @@ function getDbPool() {
       password: process.env.DB_PASS,
       database: process.env.DB_NAME,
       max: 5,
+      // RDS enforces SSL by default (pg_hba.conf rejects plaintext connections with
+      // "no encryption"); local Docker Postgres doesn't support it at all, so this
+      // is opt-in via DB_SSL rather than always-on.
+      ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
     });
   }
   return pgPool;

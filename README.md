@@ -218,3 +218,33 @@ To enable this for your own fork/repo:
 4. Push to the `main` branch (or merge a PR into it) to trigger the workflow under the **Actions** tab.
 
 > Note: this CI/CD flow always re-runs `terraform apply` against the same state, so it's meant for a single long-lived environment rather than per-branch/per-PR deployments.
+
+### Managing Secrets & Workflow Runs via GitHub CLI
+
+As an alternative to the **Settings → Secrets and variables → Actions** UI, the [`gh`](https://cli.github.com) CLI can do all of this from the terminal. Authenticate once with `gh auth login`, then:
+
+**Set a secret** - pipe the value in rather than passing it as a literal argument, so it's never echoed to your terminal history or shell logs:
+```bash
+printf '%s' "$AWS_ACCESS_KEY_ID" | gh secret set AWS_ACCESS_KEY_ID --repo OWNER/REPO
+```
+Use `printf '%s'` (or `echo -n`), not a plain pipe from a command whose output ends in a newline (e.g. `aws configure get ...` or `grep ... .env`) — a trailing newline silently becomes part of the secret value and can break things in hard-to-diagnose ways (this exact mistake produced an `AWS auth: "The security token included in the request is invalid"` error during initial setup).
+
+**List secrets** (names and last-updated time only - values are never retrievable once set):
+```bash
+gh secret list --repo OWNER/REPO
+```
+
+**List recent workflow runs:**
+```bash
+gh run list --repo OWNER/REPO --limit 5
+```
+
+**View logs from a failed run** (find the run ID from `gh run list`):
+```bash
+gh run view RUN_ID --repo OWNER/REPO --log-failed
+```
+
+**Watch a run live until it finishes:**
+```bash
+gh run watch RUN_ID --repo OWNER/REPO --interval 15 --exit-status
+```

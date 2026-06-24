@@ -97,6 +97,8 @@ jobs:
         run: |
           cd terraform
           terraform init
+          terraform fmt -check -diff
+          terraform validate
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan`;
 

@@ -71,6 +71,8 @@ jobs:
             -backend-config="region=${{ secrets.AWS_DEFAULT_REGION }}" \
             -backend-config="dynamodb_table=${{ secrets.TF_STATE_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
+          terraform fmt -check -diff
+          terraform validate
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
 

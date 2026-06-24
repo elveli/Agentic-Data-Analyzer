@@ -86,13 +86,18 @@ Once you have deployed the application to AWS using Terraform or GitHub Actions,
      ```
   2. Open a port-forwarding tunnel from your laptop, through the bastion, to RDS (pick any free local port, e.g. `15432`, so you don't clash with a local Postgres). `YOUR_DB_ENDPOINT` below is the RDS address from step 1 (the bastion reaches it directly since they're in the same VPC) - it is **not** `localhost`:
      ```bash
+     aws ssm start-session --target YOUR_BASTION_INSTANCE_ID --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters '{"host":["YOUR_DB_ENDPOINT"],"portNumber":["5432"],"localPortNumber":["15432"]}' --region YOUR_AWS_REGION
+     ```
+     (Single line on purpose - it's longer, but `\` line-continuations are easy to break when copy-pasting: if `\` isn't the very last character before the newline, e.g. a stray trailing space sneaks in, the shell doesn't treat it as a continuation and the next line's flags get mangled into the wrong argument. If you do want it spread across multiple lines, make sure each `\` is truly the last character on its line:
+     ```bash
      aws ssm start-session \
        --target YOUR_BASTION_INSTANCE_ID \
        --document-name AWS-StartPortForwardingSessionToRemoteHost \
        --parameters '{"host":["YOUR_DB_ENDPOINT"],"portNumber":["5432"],"localPortNumber":["15432"]}' \
        --region YOUR_AWS_REGION
      ```
-     (Requires the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) for the AWS CLI.) Leave this running in its own terminal - it's the tunnel.
+     )
+     Requires the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) for the AWS CLI. Leave this running in its own terminal - it's the tunnel.
   3. In another terminal, retrieve the password and connect through the tunnel (note: `localhost`/`15432`, not the real RDS endpoint/port):
      ```bash
      PGPASSWORD=$(aws secretsmanager get-secret-value --secret-id agentic-data-analyzer-db-password --region YOUR_AWS_REGION --query SecretString --output text) \
